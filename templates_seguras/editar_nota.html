@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Editar nota{% endblock %}
+{% block contenido %}
+    <h1>Editar calificacion #{{ calificacion.id }}</h1>
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+    <p><strong>Materia:</strong> {{ calificacion.materia }}</p>
+    <p><strong>Estudiante ID:</strong> {{ calificacion.estudiante_id }}</p>
+    <form method="POST" action="{{ url_for('editar_nota', id=calificacion.id) }}">
+        <label>Nueva nota:
+            <input type="number" name="nota" step="0.1" min="0" max="5" value="{{ calificacion.nota }}">
+        </label>
+        <button type="submit">Guardar</button>
+    </form>
+{% endblock %}

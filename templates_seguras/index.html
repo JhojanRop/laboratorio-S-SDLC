@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Inicio - Gestion Academica{% endblock %}
+{% block contenido %}
+    <h1>Sistema de Gestion Academica</h1>
+    <p>Version segura del laboratorio S-SDLC.</p>
+    {% if usuario %}
+        <p>Bienvenido, <strong>{{ usuario }}</strong>.</p>
+    {% else %}
+        <p>No has iniciado sesion. <a href="{{ url_for('login') }}">Inicia sesion aqui</a>.</p>
+    {% endif %}
+    <h2>Modulos</h2>
+    <ul>
+        <li><a href="{{ url_for('login') }}">Login</a> - autenticacion con consultas parametrizadas</li>
+        <li><a href="{{ url_for('buscar') }}">Buscar estudiantes</a> - busqueda segura</li>
+        <li>Perfil - salida escapada contra XSS</li>
+        <li>Editar nota - control de acceso por rol y propiedad</li>
+        <li><a href="{{ url_for('subir') }}">Subir archivo</a> - validacion de extension y tamano</li>
+    </ul>
+{% endblock %}
