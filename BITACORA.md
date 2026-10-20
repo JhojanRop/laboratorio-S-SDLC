@@ -93,3 +93,131 @@ Se añadió la acción de GitHub [release-please](https://github.com/googleapis/
 La implementación del Shift-Left en este punto es **parcial**. Varios ajustes de CI/CD marcaban errores debido a las vulnerabilidades intencionales de la aplicación, lo que hacía inviable completar el pipeline en este momento. La idea es retomar estas integraciones una vez que se hayan abordado los hallazgos de seguridad o se hayan configurado las exclusiones correspondientes.
 
 ---
+
+## Creación de la versión segura del laboratorio
+
+### Contexto
+
+Siguiendo la metodología del taller, se decidió no modificar los archivos originales vulnerables y crear en paralelo una versión segura. Esto permite a los estudiantes comparar ambos flujos, entender exactamente qué se corrigió y por qué, y practicar la migración de un código vulnerable a uno seguro.
+
+### Decisiones tomadas
+
+**1. Archivos originales intactos, versión segura en archivos paralelos**
+
+Se dejó `app.py`, `database.py` y `templates/` sin modificar. La versión segura se creó en archivos nuevos: `app_segura.py`, `models.py`, `config.py` y `templates_seguras/`. Esto garantiza que el laboratorio vulnerable siga funcionando para prácticas de explotación mientras se ofrece una referencia segura para comparación.
+
+**2. Configuración por entorno con `config.py`**
+
+Se implementó un archivo `config.py` basado en entornos (`DevelopmentConfig`, `ProductionConfig`, `TestingConfig`). Esto es fundamental tanto para el despliegue como para las pruebas, ya que cada entorno tiene necesidades distintas:
+
+- `SECRET_KEY` y `DATABASE_URI` se leen desde variables de entorno (vía `python-dotenv`).
+- `DEBUG` se controla por entorno y **no** está hardcodeado.
+- Endurecimiento de cookies de sesión (`HTTPONLY`, `SAMESITE`, `SECURE` en producción).
+- Límite de tamaño de archivo (`MAX_CONTENT_LENGTH` de 2 MB).
+- La aplicación **falla en arrancar** si `SECRET_KEY` no está configurada, evitando así el uso de claves débiles por defecto.
+
+**3. Migración a SQLAlchemy ORM para eliminar SQLi**
+
+Se reemplazó el acceso directo a SQLite con consultas concatenadas por **Flask-SQLAlchemy**. Toda la interacción con la base de datos ahora pasa a través del ORM (`Usuario.query.filter_by(...)`, `Estudiante.query.filter(...)`), lo que elimina por completo la superficie de inyección SQL al usar consultas parametrizadas internamente.
+
+**4. Puerto separado para el flujo seguro**
+
+La versión segura corre en el **puerto 3001**, mientras que la vulnerable permanece en el 5000. Esto permite ejecutar ambos entornos simultáneamente y comparar comportamientos sin interferencias.
+
+### Medidas de seguridad adicionales implementadas
+
+Más allá de las 4 correcciones principales, la versión segura incluye:
+
+- **Cabeceras HTTP de endurecimiento**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy.
+- **Control de acceso por rol y propietario**: decorador `login_required` y función `is_staff()` para proteger rutas sensibles.
+- **Validación de uploads**: `secure_filename`, whitelist de extensiones, nombre único con UUID y límite de 2 MB.
+- **Prevención de fijación de sesión**: `session.clear()` antes de autenticar.
+- **Validación de entrada**: límite de caracteres en biografía y rango de notas (0–5).
+
+### Pendientes identificados
+
+- **Contraseñas en texto plano**: `models.py` aún almacena contraseñas sin hash (marcado con `# TODO: usar hash.`). Esta mejora queda pendiente para una futura iteración.
+- **`.env.example` sin trackear**: existe en el working tree pero aún no ha sido commiteado.
+
+---
+
+## Corrección de almacenamiento de contraseñas
+
+### Contexto
+
+La versión segura seguía almacenando las contraseñas en texto plano en la base de datos, lo que representaba una vulnerabilidad crítica: cualquier acceso a la BD (por ejemplo, mediante SQLi o un backup expuesto) comprometía todas las credenciales de los usuarios. Se implementó un mecanismo de hash seguro para cerrar esta brecha.
+
+### Decisiones tomadas
+
+**1. Hash de contraseñas con werkzeug (pbkdf2:sha256)**
+
+Se utilizó `werkzeug.security.generate_password_hash` con el método `pbkdf2:sha256`, que aplica múltiples iteraciones de derivación de clave con sal automática. Esto garantiza que:
+
+- Las contraseñas nunca se almacenen en texto plano.
+- Cada hash sea único incluso para contraseñas idénticas (gracias a la sal aleatoria).
+- El costo computacional frente a ataques de fuerza bruta sea elevado.
+
+**2. Replanteamiento de la semilla de datos**
+
+El campo `password` fue renombrado a `password_hash` y la función `seed_data()` se reescribió para crear cada usuario y aplicar `set_password(...)` antes de guardar. Esto asegura que los datos de ejemplo ya nazcan con el formato correcto y no requieran migración manual.
+
+**3. Verificación en el flujo de autenticación**
+
+El login en `app_segura.py` ahora busca al usuario por `username` y verifica la contraseña con `user.check_password(clave)`, comparando contra el hash almacenado en lugar de hacerlo en la consulta SQL.
+
+### Impacto
+
+Con este cambio, la versión segura elimina el almacenamiento de credenciales en cerrado y se alinea con las mejores prácticas de manejo de contraseñas. Si la base de datos es comprometida, los atacantes solo obtendren hashes que requieren un esfuerzo computacional significativo para revertir.
+
+### Nota técnica
+
+El cambio de nombre de columna (`password` → `password_hash`) implica que una base de datos generada con la estructura anterior debe ser regenerada, ya que `db.create_all()` no realiza migraciones sobre tablas existentes.
+
+---
+
+## Implementación de pruebas automatizadas de seguridad
+
+### Contexto
+
+Una vez implementada la versión segura, era necesario verificar de forma sistemática y reproducible que las correcciones funcionan y que no se introducen regresiones. Se creó un directorio `tests/` con una suite de pruebas automatizadas enfocada en validar la **ausencia de vulnerabilidades**, no solo el comportamiento esperado.
+
+### Decisiones tomadas
+
+**1. Enfoque en regresión de seguridad**
+
+Los tests no solo verifican el happy path; validan explícitamente que los ataques conocidos **fallan**. Por ejemplo:
+
+- Se intenta inyectar `' --` en el login y se verifica que no autentica.
+- Se intenta un UNION-based SQLi en el buscador y se verifica que no filtra credenciales.
+- Se intenta inyectar `<script>` en la biografía y se verifica que se escapa correctamente.
+
+**2. Cobertura de todas las vulnerabilidades corregidas**
+
+Cada vulnerabilidad original tiene tests dedicados:
+
+| Vulnerabilidad | Tests específicos |
+|---------------|-------------------|
+| SQLi | Login y búsqueda |
+| XSS | Escape en perfil y en resultados de búsqueda |
+| IDOR | Estudiante no edita recursos ajenos, sí los propios; staff sí puede |
+| Uploads | Whitelist de extensiones, límite de tamaño, requiere autenticación |
+| Auth | Login correcto/incorrecto, hash de contraseñas, redirección de rutas protegidas |
+| Cabeceras | Presencia de CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy |
+
+**3. Aislamiento con fixtures y BD en memoria**
+
+Se configuró `conftest.py` con `APP_ENV=testing` (SQLite en memoria) y fixtures que recrean la BD y la semilla en cada test. Esto garantiza:
+
+- Tests independientes y deterministas.
+- Sin estado compartido entre pruebas.
+- Ejecución rápida sin tocar la BD de desarrollo.
+
+**4. Verificación explícita del hash de contraseñas**
+
+Se incluyó un test (`test_contrasenas_almacenadas_con_hash`) que verifica que las contraseñas no se almacenan en texto plano, que el hash usa `pbkdf2:sha256:`, y que `check_password` funciona correctamente.
+
+### Impacto
+
+La suite de pruebas sirve como **documentación viva** de las correcciones realizadas y como mecanismo de regresión: cualquier cambio que reintroduzca una vulnerabilidad será detectado automáticamente. Además, proporciona a los estudiantes un ejemplo concreto de cómo se prueban las correcciones de seguridad.
+
+---
