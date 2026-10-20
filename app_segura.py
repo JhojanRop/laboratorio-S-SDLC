@@ -89,9 +89,9 @@ def login():
         usuario = request.form.get("username", "").strip()
         clave = request.form.get("password", "")
 
-        user = Usuario.query.filter_by(username=usuario, password=clave).first()
+        user = Usuario.query.filter_by(username=usuario).first()
 
-        if user:
+        if user and user.check_password(clave):
             session.clear()  # Evita fijacion de sesion.
             session["username"] = user.username
             session["rol"] = user.rol

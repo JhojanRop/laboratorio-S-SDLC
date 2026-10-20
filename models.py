@@ -8,6 +8,7 @@ elimina la construccion manual de consultas SQL y, con ello, la inyeccion SQL.
 """
 
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
@@ -17,7 +18,7 @@ class Usuario(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)  # TODO: usar hash.
+    password_hash = db.Column(db.String(255), nullable=False)
     rol = db.Column(db.String(20), nullable=False)
     estudiante_id = db.Column(
         db.Integer,
@@ -26,6 +27,14 @@ class Usuario(db.Model):
     )
 
     estudiante = db.relationship("Estudiante", backref="usuarios")
+
+    def set_password(self, password):
+        """Genera y almacena el hash de la contrasena."""
+        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
+
+    def check_password(self, password):
+        """Verifica una contrasena contra el hash almacenado."""
+        return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f"<Usuario {self.username}>"
@@ -117,18 +126,21 @@ def seed_data():
     db.session.add_all(estudiantes)
     db.session.flush()
 
-    usuarios = [
-        Usuario(id=1, username="admin", password="admin123", rol="admin"),
-        Usuario(id=2, username="profesor", password="clave456", rol="docente"),
-        Usuario(
-            id=3,
-            username="estudiante",
-            password="1234",
-            rol="estudiante",
-            estudiante_id=1,
-        ),
-    ]
-    db.session.add_all(usuarios)
+    admin = Usuario(id=1, username="admin", rol="admin")
+    admin.set_password("admin123")
+
+    profesor = Usuario(id=2, username="profesor", rol="docente")
+    profesor.set_password("clave456")
+
+    estudiante = Usuario(
+        id=3,
+        username="estudiante",
+        rol="estudiante",
+        estudiante_id=1,
+    )
+    estudiante.set_password("1234")
+
+    db.session.add_all([admin, profesor, estudiante])
 
     calificaciones = [
         Calificacion(estudiante_id=1, materia="Redes", nota=4.2),
