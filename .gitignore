@@ -69,6 +69,7 @@ cython_debug/
 # Subidas de usuarios
 uploads/*
 !uploads/.gitkeep
+uploads_seguras/
 
 # Variables de entorno
 .env
