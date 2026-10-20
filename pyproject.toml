@@ -1,0 +1,9 @@
+[project]
+name = "laboratorio-ssdlc"
+version = "0.1.0"
+description = "Laboratorio academico intencionalmente vulnerable para practicas de S-SDLC"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.3",
+]

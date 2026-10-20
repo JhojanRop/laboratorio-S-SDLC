@@ -1,0 +1,154 @@
+# Python
+__pycache__/
+*.py[codz]
+*$py.class
+*.so
+.Python
+
+# Empaquetado
+build/
+dist/
+wheels/
+sdist/
+*.egg-info/
+*.egg
+.installed.cfg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# uv y entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+__pypackages__/
+
+# Flask
+instance/
+.webassets-cache
+
+# Tests y cobertura
+.pytest_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+*.lcov
+htmlcov/
+cover/
+nosetests.xml
+*.cover
+*.py.cover
+
+# Tipado y linting
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pyre/
+.pytype/
+.pyright/
+cython_debug/
+
+# Datos locales
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Subidas de usuarios
+uploads/*
+!uploads/.gitkeep
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+!.env.template
+.envrc
+.direnv/
+
+# Claves y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# Credenciales
+.netrc
+.pgpass
+.htpasswd
+.aws/
+.azure/
+.gcloud/
+credentials.json
+service-account*.json
+
+# Reportes de seguridad
+reports/
+*.sarif
+bandit-results.*
+semgrep-results.*
+trivy-results.*
+grype-results.*
+dependency-check-report.*
+zap-report.*
+zap-reports/
+
+# Logs y temporales
+*.log
+logs/
+*.pid
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.swp
+*.swo
+*~
+
+# Editores
+.idea/
+.vscode/
+*.code-workspace
+.spyderproject
+.spyproject
+.ropeproject
+
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+__MACOSX/
+Icon?
+.fseventsd/
+.Spotlight-V100/
+.Trashes/
+.TemporaryItems/
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Lock file de dependencias (no versionar)
+uv.lock
