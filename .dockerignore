@@ -1,0 +1,45 @@
+# Entorno y secretos
+.env
+.env.*
+
+# Datos locales
+academia_segura.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+uploads/
+uploads_seguras/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Git y CI
+.git/
+.github/
+.pre-commit-config.yaml
+
+# Tests y documentacion
+tests/
+README.md
+CHANGELOG.md
+BITACORA.md
+AGENTS.md
+docs/
+
+# Originales vulnerables y versionado
+app.py
+database.py
+release-please-config.json
+.release-please-manifest.json
+uv.lock
+
+# Sistema
+.DS_Store

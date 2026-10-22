@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.docker
+    volumes:
+      - db_data:/data
+      - uploads_data:/app/uploads_seguras
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads_data:
