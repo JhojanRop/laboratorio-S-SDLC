@@ -1,6 +1,6 @@
 [project]
 name = "laboratorio-ssdlc"
-version = "0.2.0"
+version = "0.2.1"
 description = "Laboratorio academico intencionalmente vulnerable para practicas de S-SDLC"
 readme = "README.md"
 requires-python = ">=3.12"
