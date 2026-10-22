@@ -39,7 +39,7 @@ repos:
         language: system
         types: [python]
         require_serial: true
-        verbose: true  # Muestra hallazgos sin bloquear; endurecer en CI.
+        verbose: true  # Local: advisory. En CI se ejecuta de forma estricta.
 
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.27.0
