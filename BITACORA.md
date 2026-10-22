@@ -260,3 +260,53 @@ El pipeline se dispara en ambas ramas, asegurando que tanto la rama de integraci
 El pipeline CI completa la estrategia Shift-Left: calidad de código, seguridad estática y pruebas automatizadas ahora se ejecutan en cada cambio. Cualquier regresión en la versión segura o cualquier problema de estilo se detecta antes de llegar a `main`. Esto también desbloquea el uso de `release-please` en `main`, ya que el estado del repositorio es verificable de forma automatizada.
 
 ---
+
+## Contenerización con Docker y publicación de imagen
+
+### Contexto
+
+Para facilitar el despliegue y el aislamiento de la versión segura, se agregó soporte para Docker. El objetivo era tener una imagen reproducible, con mínimo privilegio, que contenga exclusivamente la versión segura y pueda publicarse en un registro de contenedores.
+
+### Decisiones tomadas
+
+**1. Imagen basada solo en la versión segura**
+
+El `Dockerfile` copia únicamente `app_segura.py`, `models.py`, `config.py`, `templates_seguras/` y `static/`. Los archivos intencionalmente vulnerables (`app.py`, `database.py`) quedan fuera de la imagen por diseño. Esto evita que el laboratorio vulnerable se distribuya accidentalmente junto con la versión corregida.
+
+**2. Usuario sin privilegios y sistema de archivos endurecido**
+
+Se crea un usuario `appuser` (UID 10001, shell `/usr/sbin/nologin`) y se le asignan los directorios persistentes `/app/uploads_seguras` y `/data`. La imagen corre como `appuser` en lugar de `root`, aplicando principio de mínimo privilegio. Además se establecen `PYTHONDONTWRITEBYTECODE=1`, `PYTHONUNBUFFERED=1` y `UV_COMPILE_BYTECODE=1` para reducir la superficie de escritura en disco.
+
+**3. Solo dependencias de producción**
+
+Se ejecuta `uv sync --no-dev --no-install-project`, por lo que `pytest`, `bandit`, `ruff` y `pre-commit` no se instalan en la imagen. Esto reduce el tamaño de la imagen y elimina herramientas de desarrollo del entorno de ejecución.
+
+**4. Gunicorn como servidor WSGI**
+
+Se agregó `gunicorn>=26.2.0` a las dependencias de producción en `pyproject.toml`. El comando de arranque usa gunicorn con **1 worker y 4 threads** (`--workers 1 --threads 4`). La decisión de un solo worker con múltiples hilos evita problemas de concurrencia al inicializar SQLite, que no soporta bien múltiples procesos escribiendo simultáneamente.
+
+**5. Healthcheck y puerto de exposición**
+
+Se define un `HEALTHCHECK` que consulta el endpoint `/login` cada 30 segundos. La imagen expone el puerto `5000`. Cabe destacar que, en ejecución local, la versión segura corre en el puerto `3001`; en Docker se normaliza a `5000` para el despliegue contenedorizado.
+
+**6. Volúmenes persistentes en docker-compose**
+
+El archivo `docker-compose.yml` define dos volúmenes nombrados (`db_data` y `uploads_data`) montados en `/data` y `/app/uploads_seguras`, respectivamente. Esto permite que la base de datos y los archivos subidos persistan entre reinicios del contenedor. El servicio usa `restart: unless-stopped` y lee variables desde `.env.docker`.
+
+**7. Publicación automática en GHCR**
+
+Se creó `.github/workflows/docker.yml` que se ejecuta en `push` a `main`, en tags `v*` y manualmente (`workflow_dispatch`). Usa `docker/setup-buildx-action`, `docker/login-action` (ghcr.io con `GITHUB_TOKEN`), `docker/metadata-action` y `docker/build-push-action`. Las imágenes se etiquetan con SHA corto, `latest` (rama por defecto) y el tag de versión. Se desactiva `provenance` y se usa caché de GitHub Actions para acelerar builds.
+
+**8. `.dockerignore` restrictivo**
+
+Se agregó un `.dockerignore` que excluye secretos (`.env`, `.env.*`), bases de datos locales, entornos virtuales, cachés de Python, metadata de Git y CI, tests, documentación (`README.md`, `BITACORA.md`, `AGENTS.md`, `docs/`), archivos originales vulnerables (`app.py`, `database.py`), archivos de release-please y `uv.lock`. Esto asegura que la imagen solo contenga lo estrictamente necesario para ejecutar la versión segura.
+
+**9. Bump de versión a 0.1.1**
+
+La versión en `pyproject.toml` pasó de `0.1.0` a `0.1.1` para reflejar la incorporación de soporte Docker y gunicorn.
+
+### Impacto
+
+La versión segura ahora puede empaquetarse y desplegarse como contenedor de forma aislada, con usuario no privilegiado, dependencias de producción únicamente y persistencia de datos mediante volúmenes. La publicación automática en GHCR permite distribuir la imagen corregida sin exponer el código vulnerable original.
+
+---
