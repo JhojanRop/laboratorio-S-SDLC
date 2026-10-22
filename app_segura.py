@@ -34,6 +34,8 @@ app = Flask(__name__, template_folder="templates_seguras")
 env = os.getenv("APP_ENV", "development")
 app.config.from_object(config.get(env, config["default"]))
 
+print("Prueba")
+
 if not app.config["SECRET_KEY"]:
     raise RuntimeError("SECRET_KEY no configurada. Revisa tu archivo .env")
 
