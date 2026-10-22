@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/JhojanRop/laboratorio-S-SDLC/compare/v0.2.0...v0.2.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* prueba ([80dbf47](https://github.com/JhojanRop/laboratorio-S-SDLC/commit/80dbf4712531cfb7ba014e83f9965ef4f2759025))
+
 ## [0.2.0](https://github.com/JhojanRop/laboratorio-S-SDLC/compare/v0.1.1...v0.2.0) (2026-10-22)
 
 
