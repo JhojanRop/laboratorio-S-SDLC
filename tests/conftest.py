@@ -5,6 +5,7 @@
 import os
 
 os.environ["APP_ENV"] = "testing"
+os.environ["SECRET_KEY"] = "testing-secret-key"
 
 import pytest
 
