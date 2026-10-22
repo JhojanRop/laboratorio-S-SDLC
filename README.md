@@ -25,6 +25,7 @@ Aplicación Flask **intencionalmente vulnerable** para prácticas de Seguridad e
 - [Medidas de seguridad de la versión segura](#medidas-de-seguridad-de-la-versión-segura)
 - [Pruebas](#pruebas)
 - [Integración continua (CI)](#integración-continua-ci)
+- [Contenedores (Docker)](#contenedores-docker)
 - [Flujo de trabajo (Git)](#flujo-de-trabajo-git)
 - [Notas adicionales](#notas-adicionales)
 
@@ -72,6 +73,8 @@ Sistema de gestión académica con funcionalidades básicas (login, búsqueda de
 | ORM | Flask-SQLAlchemy 3.1.x | Solo en la versión segura |
 | Variables de entorno | python-dotenv | Solo en la versión segura |
 | Base de datos | SQLite | `academia.db` (vulnerable) / `academia_segura.db` (segura) |
+| Servidor WSGI | `gunicorn` | Solo en la versión segura y en Docker |
+| Contenedor | Docker + `docker-compose` | Imagen de solo versión segura, usuario no root |
 | Linting / formato | `ruff` | Reemplaza a `black`, `isort`, `flake8` |
 | Testing | `pytest` | Suite de pruebas de seguridad en `tests/` |
 | Seguridad estática | `bandit` | Modo *advisory* (no bloquea) |
@@ -96,6 +99,20 @@ uv run app_segura.py
 
 - Versión vulnerable: <http://127.0.0.1:5000>
 - Versión segura: <http://127.0.0.1:3001>
+
+### Con Docker
+
+```bash
+# Construir y ejecutar la versión segura en contenedor (puerto 5000)
+docker compose up --build
+
+# Detener y eliminar contenedores
+docker compose down
+```
+
+- Versión segura en Docker: <http://127.0.0.1:5000>
+
+> La imagen de Docker **solo contiene la versión segura** (`app_segura.py`). Los archivos vulnerables (`app.py`, `database.py`) quedan excluidos por `.dockerignore`.
 
 > La base de datos de cada versión se crea automáticamente en el primer arranque y se siembran los datos de ejemplo.
 
@@ -158,6 +175,11 @@ La **versión segura** se configura mediante variables de entorno (cargadas con 
 ├── release-please-config.json      # Configuración de release-please
 ├── .release-please-manifest.json   # Manifiesto de versión
 ├── .github/workflows/release-please.yml  # Versionado automático
+├── .github/workflows/ci.yml              # Integración continua (lint, bandit, pytest)
+├── .github/workflows/docker.yml          # Build y publicación de imagen en GHCR
+├── Dockerfile                            # Imagen de solo versión segura (usuario no root)
+├── docker-compose.yml                    # Orquestación con volúmenes persistentes
+├── .dockerignore                         # Archivos excluidos de la imagen
 ├── AGENTS.md                 # Guía para agentes de IA
 ├── BITACORA.md               # Decisiones técnicas y cambios relevantes
 ├── README.md
@@ -346,6 +368,44 @@ Todos los jobs usan `astral-sh/setup-uv@v10.3.0` con Python 3.12, caché de uv h
 
 ---
 
+## Contenedores (Docker)
+
+La versión segura puede empaquetarse y ejecutarse como contenedor Docker. La imagen **solo contiene la versión segura** (`app_segura.py`), excluyendo deliberadamente los archivos vulnerables (`app.py`, `database.py`) mediante `.dockerignore`.
+
+### Características de la imagen
+
+- **Base:** `python:3.12-slim` con `uv` instalado desde `ghcr.io/astral-sh/uv`.
+- **Solo dependencias de producción:** `uv sync --no-dev` (sin pytest, bandit ni ruff).
+- **Usuario no root:** `appuser` (UID 10001, shell `/usr/sbin/nologin`).
+- **Servidor WSGI:** `gunicorn` con 1 worker y 4 threads (evita problemas de concurrencia con SQLite).
+- **Healthcheck:** consulta `/login` cada 30 segundos.
+- **Puerto:** expone `5000` (en local la versión segura corre en `3001`).
+- **Volúmenes persistentes:** `db_data` para la base de datos y `uploads_data` para archivos subidos.
+
+### Comandos
+
+```bash
+# Construir y ejecutar
+docker compose up --build
+
+# Ver logs
+docker compose logs -f
+
+# Detener y eliminar contenedores
+docker compose down
+
+# Ejecutar en segundo plano
+docker compose up -d
+```
+
+La configuración de variables de entorno para Docker se lee desde `.env.docker` (no versionado).
+
+### Publicación de imagen
+
+La imagen se construye y publica automáticamente en **GHCR** (`ghcr.io`) mediante `.github/workflows/docker.yml` en cada push a `main`, en tags `v*` o ejecuciones manuales (`workflow_dispatch`). Las etiquetas incluyen el SHA corto del commit, `latest` (rama por defecto) y el tag de versión.
+
+---
+
 ## Flujo de trabajo (Git)
 
 El repositorio sigue un flujo de **Git Flow simplificado**:
@@ -370,4 +430,5 @@ El repositorio sigue un flujo de **Git Flow simplificado**:
 - **Versión segura:** contraseñas hasheadas, configuración por entorno, `debug` desactivado por defecto y endurecimiento activo.
 - **Bases de datos:** se crean automáticamente en el primer arranque (`academia.db` y `academia_segura.db`). No se versionan.
 - **Pruebas:** la suite cubre solo la **versión segura** (`app_segura.py`), validando la ausencia de las 4 vulnerabilidades originales.
+- **Docker:** la imagen solo contiene la versión segura (`app_segura.py`); los archivos vulnerables quedan excluidos por `.dockerignore`. El puerto en contenedor es `5000` (en local corre en `3001`).
 - **Artefactos locales:** `academia.db`, `academia_segura.db`, `uploads/*`, `uploads_seguras/` y `.env` están en `.gitignore`.
