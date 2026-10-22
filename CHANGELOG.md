@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/JhojanRop/laboratorio-S-SDLC/compare/v0.1.1...v0.2.0) (2026-10-22)
+
+
+### Features
+
+* add Docker support and GHCR image pipeline ([3679305](https://github.com/JhojanRop/laboratorio-S-SDLC/commit/36793054146792f5dd2bec165ec0d975c97683a3))
+* add Docker support and GHCR image pipeline ([d78b838](https://github.com/JhojanRop/laboratorio-S-SDLC/commit/d78b838abf494c29f2cbf2edb3166c2a62a9527f))
+* add Docker support for secure app ([9d520c0](https://github.com/JhojanRop/laboratorio-S-SDLC/commit/9d520c089d9a67041da020cdd0e7ccc756a64c3f))
+
+
+### Documentation
+
+* document Docker support and image pipeline ([309f8e7](https://github.com/JhojanRop/laboratorio-S-SDLC/commit/309f8e796f41272c2b83d926ca7417f075746416))
+
 ## [0.1.1](https://github.com/JhojanRop/laboratorio-S-SDLC/compare/v0.1.0...v0.1.1) (2026-10-22)
 
 
