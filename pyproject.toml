@@ -26,7 +26,8 @@ target-version = "py312"
 select = ["E", "F", "W", "B", "I", "UP"]
 
 [tool.bandit]
-exclude_dirs = [".venv", "uploads", "tests"]
+# app.py y database.py son vulnerables a proposito (material del taller).
+exclude_dirs = [".venv", "uploads", "tests", "app.py", "database.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
