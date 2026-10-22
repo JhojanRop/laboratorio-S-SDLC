@@ -24,6 +24,7 @@ Aplicación Flask **intencionalmente vulnerable** para prácticas de Seguridad e
   - [4. Carga de archivos sin restricción](#4-carga-de-archivos-sin-restricción)
 - [Medidas de seguridad de la versión segura](#medidas-de-seguridad-de-la-versión-segura)
 - [Pruebas](#pruebas)
+- [Integración continua (CI)](#integración-continua-ci)
 - [Flujo de trabajo (Git)](#flujo-de-trabajo-git)
 - [Notas adicionales](#notas-adicionales)
 
@@ -319,6 +320,29 @@ uv run pytest
 - **Regresión de seguridad:** se prueba que los ataques conocidos **fallan**, no solo el happy path.
 - **Aislamiento:** cada test usa una BD en memoria y una carpeta de uploads temporal, sin estado compartido.
 - **Documentación viva:** los tests muestran de forma concreta qué se corrigió y por qué.
+
+---
+
+## Integración continua (CI)
+
+Se configura un pipeline de GitHub Actions en `.github/workflows/ci.yml` que se ejecuta en cada `push` y `pull_request` sobre `main` y `dev`, y también puede dispararse manualmente (`workflow_dispatch`).
+
+### Jobs
+
+| Job | Herramienta | Propósito |
+|-----|-------------|-----------|
+| `lint` | `ruff check` + `ruff format --check` | Estilo de código y formato uniforme |
+| `security` | `bandit -c pyproject.toml -r .` | Análisis de seguridad estático |
+| `tests` | `uv run pytest -q` | Ejecución de la suite de pruebas de seguridad |
+
+Todos los jobs usan `astral-sh/setup-uv@v10.3.0` con Python 3.12, caché de uv habilitado e instalan dependencias con `uv sync --dev`.
+
+### Configuración clave
+
+- **Bandit excluye archivos intencionalmente vulnerables:** `app.py` y `database.py` están en `[tool.bandit] exclude_dirs` para que el análisis de seguridad estático no falle por las vulnerabilidades deliberadas del laboratorio original.
+- **Permisos mínimos:** el job corre con `contents: read` (principio de mínimo privilegio).
+- **Concurrencia:** `ci-${{ github.ref }}` con `cancel-in-progress: true` evita ejecuciones duplicadas y descarta pipelines obsoletos.
+- **Ramas cubiertas:** `main` y `dev`, garantizando que ambas pasen validaciones antes de cualquier merge o release.
 
 ---
 

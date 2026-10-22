@@ -221,3 +221,42 @@ Se incluyó un test (`test_contrasenas_almacenadas_con_hash`) que verifica que l
 La suite de pruebas sirve como **documentación viva** de las correcciones realizadas y como mecanismo de regresión: cualquier cambio que reintroduzca una vulnerabilidad será detectado automáticamente. Además, proporciona a los estudiantes un ejemplo concreto de cómo se prueban las correcciones de seguridad.
 
 ---
+
+## Integración continua con GitHub Actions (CI)
+
+### Contexto
+
+La implementación Shift-Left iniciada previamente quedaba parcial porque los ajustes de CI marcaban errores al analizar los archivos intencionalmente vulnerables (`app.py`, `database.py`). Ahora que la versión segura está completa y probada, se activó un pipeline de CI en GitHub Actions para ejecutar validaciones automáticas en cada push y Pull Request a `main` y `dev`.
+
+### Decisiones tomadas
+
+**1. Workflow `ci.yml` con tres jobs paralelos**
+
+Se creó `.github/workflows/ci.yml` ejecutándose en `push` y `pull_request` sobre `main` y `dev`, además de permitir ejecución manual (`workflow_dispatch`). Los jobs son:
+
+| Job | Herramienta | Propósito |
+|-----|-------------|-----------|
+| `lint` | `ruff check` + `ruff format --check` | Estilo de código y formato uniforme |
+| `security` | `bandit -c pyproject.toml -r .` | Análisis de seguridad estático |
+| `tests` | `uv run pytest -q` | Ejecución de la suite de pruebas de seguridad |
+
+Todos los jobs usan `astral-sh/setup-uv@v10.3.0` con Python 3.12 y caché de uv habilitado, e instalan dependencias con `uv sync --dev`.
+
+**2. Exclusión de archivos intencionalmente vulnerables en bandit**
+
+Se actualizó `[tool.bandit]` en `pyproject.toml` para excluir `app.py` y `database.py` además de `.venv`, `uploads` y `tests`. Esto permite que bandit analice la versión segura sin fallar por las vulnerabilidades deliberadas del laboratorio original.
+
+**3. Control de concurrencia y permisos mínimos**
+
+- `concurrency: ci-${{ github.ref }}` con `cancel-in-progress: true` evita ejecuciones duplicadas y descarta pipelines obsoletos cuando llega un nuevo push.
+- `permissions: contents: read` limita al mínimo los permisos del token de GitHub, aplicando principio de mínimo privilegio.
+
+**4. Ejecución en `main` y `dev`**
+
+El pipeline se dispara en ambas ramas, asegurando que tanto la rama de integración como la principal pasen las validaciones antes de cualquier merge o release.
+
+### Impacto
+
+El pipeline CI completa la estrategia Shift-Left: calidad de código, seguridad estática y pruebas automatizadas ahora se ejecutan en cada cambio. Cualquier regresión en la versión segura o cualquier problema de estilo se detecta antes de llegar a `main`. Esto también desbloquea el uso de `release-please` en `main`, ya que el estado del repositorio es verificable de forma automatizada.
+
+---
